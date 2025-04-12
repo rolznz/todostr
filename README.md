@@ -16,11 +16,10 @@ A TODO list with nostr login and zaps. You allow anyone to enter their own TODOs
 
 Follow-ups:
 
-1. Updating a TODO
-2. Deleting a TODO
-3. A leaderboard shows the most popular TODO items by global zaps and by the zaps of your follows. (I'm also open to using other WoT calcs but I assume that's too complex.)
-4. You should be able to login via a browser extension like alby, paste a priv key, or spin up a new nostr identity
-5. Allowing uploading images to nostr.build and attaching them in the TODO item.
+1. Deleting a TODO
+2. A leaderboard shows the most popular TODO items by global zaps and by the zaps of your follows. (I'm also open to using other WoT calcs but I assume that's too complex.)
+3. You should be able to login via a browser extension like alby, paste a priv key, or spin up a new nostr identity
+4. Allowing uploading images to nostr.build and attaching them in the TODO item.
 
 Notes: for Alby to work you need to serve the index.html file. I ran `python3 -m http.server` in the same directory for this.
 
