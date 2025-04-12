@@ -1,0 +1,4 @@
+I got the following error when I posted a note: but the note was still signed and published correctly.
+
+Error signing or publishing TODO: TypeError: pubs.on is not a function
+    at submitTodoBtn.onclick ((index):511:22)

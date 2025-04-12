@@ -506,19 +506,13 @@
                 const signedEvent = await window.nostr.signEvent(eventTemplate);
                 console.log("Publishing event:", signedEvent);
 
-                const pubs = pool.publish(relays, signedEvent);
-                let publishedTo = 0;
-                pubs.on("ok", (relay) => {
-                    publishedTo++;
-                    console.log(`Event ${signedEvent.id} published to ${relay}`);
-                    // Maybe provide feedback after publishing to at least one relay
-                    if (publishedTo === 1) {
-                         alert("TODO submitted!");
-                    }
-                });
-                 pubs.on("failed", (relay, reason) => {
-                    console.error(`Failed to publish event ${signedEvent.id} to ${relay}: ${reason}`);
-                });
+                // pool.publish returns a Promise that resolves when the event is sent
+                // It doesn't have .on() handlers like subscribe
+                await pool.publish(relays, signedEvent);
+                console.log(`Event ${signedEvent.id} published attempt initiated.`);
+
+                // Provide feedback after successful publish attempt
+                alert("TODO submitted!");
 
                 modal.style.display = "none";
                 // The main subscription will pick up the event and render it
@@ -562,23 +556,17 @@
                 content: newStatus.toUpperCase(),
             };
 
-             try {
+            try {
                 console.log("Signing status update:", eventTemplate);
                 const signedEvent = await window.nostr.signEvent(eventTemplate);
                 console.log("Publishing status update:", signedEvent);
 
-                const pubs = pool.publish(relays, signedEvent);
-                 let publishedTo = 0;
-                 pubs.on("ok", (relay) => {
-                    publishedTo++;
-                    console.log(`Status update ${signedEvent.id} published to ${relay}`);
-                     if (publishedTo === 1) {
-                         alert("Status updated!");
-                    }
-                });
-                 pubs.on("failed", (relay, reason) => {
-                    console.error(`Failed to publish status update ${signedEvent.id} to ${relay}: ${reason}`);
-                });
+                // pool.publish returns a Promise that resolves when the event is sent
+                await pool.publish(relays, signedEvent);
+                console.log(`Status update ${signedEvent.id} published attempt initiated.`);
+
+                // Provide feedback after successful publish attempt
+                alert("Status updated!");
 
                 // The status subscription will pick up the change and re-render
             } catch (error) {
