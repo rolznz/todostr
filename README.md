@@ -1,5 +1,7 @@
 # TODOstr
 
+TODOstr is a public TODO board where anyone can post TODOs or zap TODOs posted by others. It's completely vibe-coded. Nostr relays enable the app to run without its own backend.
+
 Created using VSCode + Roo Code plugin (Google Gemini 2.5 pro). The initial working prototype was made in 3 prompts (initial + 2 follow-ups). I did not add or edit any of the code in index.html. The AI wrote everything.
 I've continued refining the app. Go to the original prototype repository for the first 3 prompts:
 [TODOstr original](https://github.com/rolznz/todostr-original)
