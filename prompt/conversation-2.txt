@@ -1,0 +1,241 @@
+Replace the Update prompt with a proper modal (like the create TODO modal) with status choices to choose from.
+
+Radio buttons with nice emojis to recognize them more quickly would be great.
+See more
+Tokens:
+61.6k
+5.1k
+
+332 kB
+Context Window:
+28.0k
+1.0m
+
+Okay, I've reviewed the code. Here's the plan:
+
+Add HTML: Create a new modal section (#update-todo-modal) similar to #add-todo-modal, but with radio buttons for status selection (TODO 📝, DOING ⏳, DONE ✅) and a hidden input to store the event ID being updated.
+Add CSS: Ensure the new modal looks correct, potentially adding minor styles for the radio button layout if needed. The existing .modal styles should cover most of it.
+Modify JavaScript:
+Get references to the new modal elements.
+Update handleUpdateClick to:
+Retrieve the current status of the TODO.
+Set the hidden event ID input's value.
+Pre-select the radio button matching the current status.
+Show the #update-todo-modal instead of using prompt().
+Add event listeners for the new modal's close button and submit button.
+The submit handler will read the selected radio value and the hidden event ID, then proceed with the existing Nostr publishing logic.
+Update the window.onclick handler to close the update modal as well.
+Let's start by adding the HTML structure and modifying the JavaScript. I'll use apply_diff for this.
+
+<<<<<<< SEARCH
+:start_line:284
+:end_line:284
+-------
+        </div>
+    </div>
+
+    <script>
+=======
+        </div>
+    </div>
+
+    <!-- Update TODO Modal -->
+    <div id="update-todo-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-update-btn close-btn">&times;</span>
+            <h2>Update TODO Status</h2>
+            <input type="hidden" id="update-event-id"> <!-- To store the event ID -->
+            <div id="status-options" style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px;">
+                 <label>
+                    <input type="radio" name="update-status" value="TODO" id="update-status-todo">
+                    📝 TODO
+                </label>
+                <label>
+                    <input type="radio" name="update-status" value="DOING" id="update-status-doing">
+                    ⏳ DOING
+                </label>
+                <label>
+                    <input type="radio" name="update-status" value="DONE" id="update-status-done">
+                    ✅ DONE
+                </label>
+            </div>
+            <button id="submit-update-btn">Submit Update</button>
+        </div>
+    </div>
+
+
+    <script>
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+:start_line:293
+:end_line:296
+-------
+        const modal = document.getElementById('add-todo-modal');
+        const closeModalBtn = modal.querySelector('.close-btn');
+        const submitTodoBtn = document.getElementById('submit-todo-btn');
+        const todoTextArea = document.getElementById('todo-text');
+=======
+        const addModal = document.getElementById('add-todo-modal');
+        const closeAddModalBtn = addModal.querySelector('.close-btn');
+        const submitTodoBtn = document.getElementById('submit-todo-btn');
+        const todoTextArea = document.getElementById('todo-text');
+
+        // Update Modal Elements
+        const updateModal = document.getElementById('update-todo-modal');
+        const closeUpdateModalBtn = updateModal.querySelector('.close-update-btn');
+        const submitUpdateBtn = document.getElementById('submit-update-btn');
+        const updateEventIdInput = document.getElementById('update-event-id');
+        const updateStatusOptions = updateModal.querySelectorAll('input[name="update-status"]');
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+:start_line:609
+:end_line:610
+-------
+             }
+             todoTextArea.value = ''; // Clear previous input
+             modal.style.display = "block";
+         };
+=======
+             }
+             todoTextArea.value = ''; // Clear previous input
+             addModal.style.display = "block";
+         };
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+:start_line:612
+:end_line:614
+-------
+         closeModalBtn.onclick = () => {
+             modal.style.display = "none";
+         };
+=======
+         closeAddModalBtn.onclick = () => {
+             addModal.style.display = "none";
+         };
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+:start_line:617
+:end_line:619
+-------
+         window.onclick = (event) => {
+             if (event.target == modal) {
+                 modal.style.display = "none";
+=======
+         window.onclick = (event) => {
+             if (event.target == addModal) {
+                 addModal.style.display = "none";
+             } else if (event.target == updateModal) {
+                 updateModal.style.display = "none";
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+:start_line:653
+:end_line:653
+-------
+                 showToast("TODO submitted!");
+
+                 modal.style.display = "none";
+=======
+                 showToast("TODO submitted!");
+
+                 addModal.style.display = "none";
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+:start_line:682
+:end_line:686
+-------
+             }
+
+             const newStatus = prompt("Update status (TODO, DOING, DONE):", todos.get(eventId)?.status || "TODO");
+             if (!newStatus || !["TODO", "DOING", "DONE"].includes(newStatus.toUpperCase())) {
+                 showToast("Invalid status. Please enter TODO, DOING, or DONE.", 5000, true);
+                 return;
+             }
+=======
+             }
+
+             // --- Show Update Modal ---
+             const currentTodoData = todos.get(eventId);
+             if (!currentTodoData) {
+                 showToast("Could not find TODO data.", 5000, true);
+                 return;
+             }
+             const currentStatus = currentTodoData.status.toUpperCase();
+
+             // Set hidden input value
+             updateEventIdInput.value = eventId;
+
+             // Check the correct radio button
+             updateStatusOptions.forEach(radio => {
+                 radio.checked = (radio.value === currentStatus);
+             });
+
+             // Display the modal
+             updateModal.style.display = "block";
+         }
+
+         // --- Update Modal Submit Handler ---
+         submitUpdateBtn.onclick = async () => {
+             const eventId = updateEventIdInput.value;
+             let newStatus = null;
+             updateStatusOptions.forEach(radio => {
+                 if (radio.checked) {
+                     newStatus = radio.value;
+                 }
+             });
+
+             if (!eventId || !newStatus) {
+                 showToast("Could not get event ID or selected status.", 5000, true);
+                 return;
+             }
+             if (!window.nostr) {
+                 showToast("Nostr extension not available.", 5000, true);
+                 return;
+             }
+             // No need to re-check owner here as it was done in handleUpdateClick
+
+             // Proceed with publishing the update event
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+:start_line:707
+:end_line:712
+-------
+                 showToast("Status updated!");
+
+                 // The status subscription will pick up the change and re-render
+             } catch (error) {
+                 console.error("Error signing or publishing status update:", error);
+                 showToast(`Failed to update status: ${error.message || error}`, 5000, true);
+             }
+         }
+=======
+                 showToast("Status updated!");
+
+                 // The status subscription will pick up the change and re-render
+             } catch (error) {
+                 console.error("Error signing or publishing status update:", error);
+                 showToast(`Failed to update status: ${error.message || error}`, 5000, true);
+             } finally {
+                 // Hide the modal regardless of success/failure
+                 updateModal.style.display = "none";
+             }
+         };
+
+         // --- Update Modal Close Handler ---
+         closeUpdateModalBtn.onclick = () => {
+             updateModal.style.display = "none";
+         };
+>>>>>>> REPLACE
+
+Roo wants to edit this file:
+
+
+Checkpoint
+Current
+
+
+
+The changes have been applied to index.html. The prompt for updating the TODO status has been replaced with a modal dialog containing radio buttons (📝 TODO, ⏳ DOING, ✅ DONE) for status selection.
+
+
+Task Completed
+I have replaced the update prompt with a modal dialog in index.html. The new modal allows selecting the TODO status using radio buttons with emojis.

@@ -283,6 +283,31 @@
         </div>
     </div>
 
+    <!-- Update TODO Modal -->
+    <div id="update-todo-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-update-btn close-btn">&times;</span>
+            <h2>Update TODO Status</h2>
+            <input type="hidden" id="update-event-id"> <!-- To store the event ID -->
+            <div id="status-options" style="margin-bottom: 15px; display: flex; flex-direction: column; gap: 10px;">
+                 <label>
+                    <input type="radio" name="update-status" value="TODO" id="update-status-todo">
+                    📝 TODO
+                </label>
+                <label>
+                    <input type="radio" name="update-status" value="DOING" id="update-status-doing">
+                    ⏳ DOING
+                </label>
+                <label>
+                    <input type="radio" name="update-status" value="DONE" id="update-status-done">
+                    ✅ DONE
+                </label>
+            </div>
+            <button id="submit-update-btn">Submit Update</button>
+        </div>
+    </div>
+
+
     <script>
         const { SimplePool, finalizeEvent, nip19 } = NostrTools;
 
@@ -290,10 +315,17 @@
         const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
         const todoListElement = document.getElementById('todo-list');
         const addTodoBtn = document.getElementById('add-todo-btn');
-        const modal = document.getElementById('add-todo-modal');
-        const closeModalBtn = modal.querySelector('.close-btn');
+        const addModal = document.getElementById('add-todo-modal');
+        const closeAddModalBtn = addModal.querySelector('.close-btn');
         const submitTodoBtn = document.getElementById('submit-todo-btn');
         const todoTextArea = document.getElementById('todo-text');
+
+        // Update Modal Elements
+        const updateModal = document.getElementById('update-todo-modal');
+        const closeUpdateModalBtn = updateModal.querySelector('.close-update-btn');
+        const submitUpdateBtn = document.getElementById('submit-update-btn');
+        const updateEventIdInput = document.getElementById('update-event-id');
+        const updateStatusOptions = updateModal.querySelectorAll('input[name="update-status"]');
 
         // --- Data Store ---
         // Store TODOs, keyed by event id
@@ -606,16 +638,18 @@
                 return;
             }
             todoTextArea.value = ''; // Clear previous input
-            modal.style.display = "block";
+            addModal.style.display = "block";
         };
 
-        closeModalBtn.onclick = () => {
-            modal.style.display = "none";
+        closeAddModalBtn.onclick = () => {
+            addModal.style.display = "none";
         };
 
         window.onclick = (event) => {
-            if (event.target == modal) {
-                modal.style.display = "none";
+            if (event.target == addModal) {
+                addModal.style.display = "none";
+            } else if (event.target == updateModal) {
+                updateModal.style.display = "none";
             }
         };
 
@@ -650,7 +684,7 @@
                 // Provide feedback after successful publish attempt
                 showToast("TODO submitted!");
 
-                modal.style.display = "none";
+                addModal.style.display = "none";
                 // The main subscription will pick up the event and render it
             } catch (error) {
                 console.error("Error signing or publishing TODO:", error);
@@ -679,11 +713,47 @@
                 return;
             }
 
-            const newStatus = prompt("Update status (TODO, DOING, DONE):", todos.get(eventId)?.status || "TODO");
-            if (!newStatus || !["TODO", "DOING", "DONE"].includes(newStatus.toUpperCase())) {
-                showToast("Invalid status. Please enter TODO, DOING, or DONE.", 5000, true);
+            // --- Show Update Modal ---
+            const currentTodoData = todos.get(eventId);
+            if (!currentTodoData) {
+                showToast("Could not find TODO data.", 5000, true);
                 return;
             }
+            const currentStatus = currentTodoData.status.toUpperCase();
+
+            // Set hidden input value
+            updateEventIdInput.value = eventId;
+
+            // Check the correct radio button
+            updateStatusOptions.forEach(radio => {
+                radio.checked = (radio.value === currentStatus);
+            });
+
+            // Display the modal
+            updateModal.style.display = "block";
+        }
+
+        // --- Update Modal Submit Handler ---
+        submitUpdateBtn.onclick = async () => {
+            const eventId = updateEventIdInput.value;
+            let newStatus = null;
+            updateStatusOptions.forEach(radio => {
+                if (radio.checked) {
+                    newStatus = radio.value;
+                }
+            });
+
+            if (!eventId || !newStatus) {
+                showToast("Could not get event ID or selected status.", 5000, true);
+                return;
+            }
+            if (!window.nostr) {
+                showToast("Nostr extension not available.", 5000, true);
+                return;
+            }
+            // No need to re-check owner here as it was done in handleUpdateClick
+
+            // Proceed with publishing the update event
 
             const eventTemplate = {
                 kind: 714,
@@ -708,8 +778,16 @@
             } catch (error) {
                 console.error("Error signing or publishing status update:", error);
                 showToast(`Failed to update status: ${error.message || error}`, 5000, true);
+            } finally {
+                // Hide the modal regardless of success/failure
+                updateModal.style.display = "none";
             }
-        }
+        };
+
+        // --- Update Modal Close Handler ---
+        closeUpdateModalBtn.onclick = () => {
+            updateModal.style.display = "none";
+        };
 
         // --- Zap Logic Helpers ---
 

@@ -1,0 +1,3 @@
+Replace the Update prompt with a proper modal (like the create TODO modal) with status choices to choose from.
+
+Radio buttons with nice emojis to recognize them more quickly would be great.
