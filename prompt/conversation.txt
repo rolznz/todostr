@@ -1,0 +1,218 @@
+Make a Nostr TODO list app where anyone can post their own TODOs.
+
+It should be made all packaged in a single HTML file. Make sure to not save any other local files. External scripts via CDN are good.
+
+The Nostr kind for the TODO events I have chosen is 713 which is an normal event.
+
+You should use the following relays to query and save TODOs: wss://relay.damus.io, wss://nos.lol.
+
+When the page loads you should setup a subscription to the kind event 713, as this is how you will find existing TODOs to display.
+
+For each TODO you find, you should setup a subscription to the kind 9735 and e tag being the id of the note. This is how you can find the total amount of zaps.
+
+For example the filter for one TODO event with id "965d...669e" would be: { kinds: [9735], "#e": ["965d...669e"],}
+
+For each TODO you find, you should subscribe to the profile metadata the of the pubkey in the TODO to extract the name from the content field in the event. This is the name of the person who published the TODO.
+
+For example the filter for one TODO event with pubkey "363d...264e" would be: { kinds: [0], "authors": ["363d...264e"], limit: 1}
+
+For each TODO you find, you should setup a subscription to the kind 714 and e tag being the id of the note, and . This is how you can find the status updates for the TODO.
+
+For example the filter for one TODO event with id "965d...669e" and pubkey "363d...264e" would be: { kinds: [714], "#e": ["965d...669e"], authors: ["363d...264e"]}
+
+Never close the relay connection or above subscriptions.
+
+Each TODO should be a card showing the content of the TODO and the name of the person who posted it.
+
+It should also show the latest status of the TODO (if it does not exist, the default status is "TODO").
+
+On the bottom of each card it should have a button to zap and next to the button should show the sum of the amount of zaps the note has received. The should also be a button to "update" which will publish a new status update for the TODO (kind 714).
+
+When the update button is pressed, a prompt will be shown to update the status ("TODO", "DOING" or "DONE")
+
+{
+  kind: 714,
+  created_at: Math.floor(Date.now() / 1000),
+  tags: [["e", "<id of original event>"]],
+  content: "DOING",
+}
+
+The full event can then be received by calling window.nostr.signEvent and passing the above event in.
+
+If the pubkey does not match the pubkey of the original TODO, then abort and show an alert ("You are not the owner of this TODO")
+
+The event must then be published to the relays.
+
+On the top right there should be a button to add a new TODO, which will open a modal and allow you to type text. Once you press submit, it should create an event. 
+{
+  kind: 713,
+  created_at: Math.floor(Date.now() / 1000),
+  tags: [],
+  content: "<content the user typed>",
+}
+
+The full event can then be received by calling window.nostr.signEvent and passing the above event in.
+
+The event must then be published to the relays.
+
+If window.nostr does not exist in the browser, when we try to use it instead abort and show an alert: "Alby extension not found. Please install the Alby Browser Extension and then reload the page".
+
+The TODO cards should be ordered by the total sum of zaps.
+
+Make sure the app is responsive so it works on both mobile and desktop.
+
+
+Before you start, fetch the READMEs one at a time:
+
+1. Learn about Nostr basics and addressable events from https://raw.githubusercontent.com/nostr-protocol/nips/refs/heads/master/01.md
+2. Learn about window.nostr object which should be used to sign TODO events a user wants to post https://raw.githubusercontent.com/nostr-protocol/nips/refs/heads/master/07.md
+3. Learn about nostr-tools which will be used for subscribing to events and publishing them. Also see the "Using from the browser" section https://raw.githubusercontent.com/nbd-wtf/nostr-tools/refs/heads/master/README.md
+4. Learn more about Nostr zaps from https://raw.githubusercontent.com/nostr-protocol/nips/refs/heads/master/57.md
+See more
+Tokens:
+553.8k
+15.1k
+
+498 kB
+Context Window:
+43.4k
+1.0m
+
+You are absolutely correct! I added the Zap button visually but didn't implement its functionality or attach the click handler. My apologies for that oversight.
+
+Let's implement the Zap functionality now.
+
+Plan:
+
+Read renderTodoCard: Get the current code and line numbers to uncomment the event listener.
+Implement handleZapClick: Create the function to handle the zap process according to NIP-57. This will involve:
+Checking for window.nostr and window.webln.
+Getting recipient details (pubkey, event ID).
+Prompting for the zap amount.
+Fetching the recipient's profile to find their Lightning address/LNURL.
+Performing the LNURL workflow (GET request, check allowsNostr).
+Creating and signing the Zap Request event (kind 9734).
+Making the callback request with the signed event.
+Receiving the invoice (pr).
+Requesting payment via window.webln.sendPayment.
+Handling errors and user feedback.
+Apply Diff: Uncomment the event listener in renderTodoCard and add the new handleZapClick function.
+First, let's read the renderTodoCard function block.
+
+
+Roo wants to read this file:
+
+
+Whoops, it seems I requested the wrong lines previously. Let me try reading the renderTodoCard function again, which should be further down in the <script> section.
+
+
+Roo wants to read this file:
+
+
+Okay, got the first part of renderTodoCard. Let's get the rest of it to see where the event listener needs to be attached.
+
+
+Roo wants to read this file:
+
+
+Okay, I have the code for renderTodoCard. Line 269 is indeed the commented-out event listener for the zap button.
+
+Now, I will:
+
+Create the handleZapClick function with the logic described in NIP-57.
+Add helper functions parseLnUrl (to decode lud06/lud16) and fetchProfileAndLNURL (to get the LNURL pay URL from the user's profile).
+Uncomment the event listener in renderTodoCard.
+This requires adding significant new code and modifying the existing renderTodoCard function.
+
+
+Roo wants to edit this file:
+
+
+Checkpoint
+Current
+
+
+
+Okay, I have added the handleZapClick function and its necessary helpers (parseLnUrl, fetchProfileAndLNURL) to index.html. I also uncommented the event listener in the renderTodoCard function, so clicking the zap button (⚡ Zap) should now trigger the zap process.
+
+This process involves:
+
+Checking for the Nostr (NIP-07) and WebLN browser extensions.
+Prompting the user for the amount (in sats).
+Fetching the recipient's profile (kind 0) to find their Lightning Address or LNURL.
+Performing the LNURL-pay workflow to check if the recipient supports Nostr zaps (allowsNostr: true).
+Creating and signing a zap request event (kind 9734) using the Nostr extension.
+Fetching the actual Lightning invoice from the recipient's LNURL server using the signed zap request.
+Requesting payment of the invoice using the WebLN extension.
+Alerting the user on success or failure.
+The zap total displayed on the card will update automatically when the zap receipt (kind 9735) is published by the recipient's server and received by our existing subscription.
+
+You can reload index.html and try clicking the zap button on a TODO card now.
+
+
+Task Completed
+I have implemented the Zap functionality. Clicking the '⚡ Zap' button on a TODO card will now initiate the NIP-57 zap process, allowing users to send Lightning payments via a WebLN-enabled browser extension (like Alby) to recipients who support Nostr zaps. The zap total on the card will update once the zap receipt is received.
+
+
+Run Command:
+open index.html
+Command Output
+
+Make this index.html served on github pages
+
+
+Make this index.html served on github pages
+
+
+
+Okay, you want to deploy the index.html file using GitHub Pages so it's accessible online.
+
+To do this, we need to ensure this project is a Git repository, has a remote pointing to GitHub, and then push the index.html file to the correct branch (gh-pages is common, or the main/master branch if configured in repository settings).
+
+First, let's check the Git status and remotes for this project directory.
+
+
+Run Command:
+git status && git remote -v
+
+yes it is
+
+
+
+Okay, since the project is already a Git repository with a remote configured, we can proceed to add, commit, and push the index.html file.
+
+I'll assume you want to deploy from the main branch (the most common default for GitHub Pages). If your repository is configured to use a different branch (like gh-pages or master), please let me know.
+
+This command will stage index.html, commit it with a message, and push it to the main branch on the origin remote.
+
+
+Run Command:
+git add index.html && git commit -m "Add Nostr TODO app for GitHub Pages" && git push origin main
+
+it's already committed, and pushed on the master branch.
+
+
+
+Understood. Since index.html is already committed and pushed to the master branch, the final step is to ensure GitHub Pages is enabled and configured correctly in your repository settings on GitHub.
+
+To enable GitHub Pages:
+
+Go to your repository on GitHub.com.
+Click on the "Settings" tab.
+In the left sidebar, click on "Pages".
+Under "Build and deployment", ensure the "Source" is set to "Deploy from a branch".
+Under "Branch", select master as the source branch and / (root) as the folder.
+Click "Save".
+GitHub will then build and deploy your page. It might take a minute or two for the site to become available.
+
+
+Task Completed
+The index.html file containing the Nostr TODO app is already committed and pushed to the master branch of your GitHub repository.
+
+To make it live via GitHub Pages, you need to configure it in your repository settings on GitHub:
+
+Go to your repository's Settings > Pages.
+Under Build and deployment, select Deploy from a branch.
+Choose the master branch and / (root) folder as the source.
+Save the changes.
+Once deployed (which may take a minute or two), your Nostr TODO app should be available at https://<your-github-username>.github.io/<your-repository-name>/.
