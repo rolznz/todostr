@@ -339,3 +339,44 @@ Under Build and deployment, select Deploy from a branch.
 Choose the master branch and / (root) folder as the source.
 Save the changes.
 Once deployed (which may take a minute or two), your Nostr TODO app should be available at https://<your-github-username>.github.io/<your-repository-name>/.
+
+Right now I can see the update button even for TODOs that are not mine
+
+
+
+You are right, that's a significant oversight. The "Update" button should only be visible (or enabled) if the current user (identified by currentUserPubkey from the Nostr extension) matches the author of the TODO (event.pubkey).
+
+Let's fix the renderTodoCard function to conditionally display the update button.
+
+First, I need to read the relevant section of the renderTodoCard function again to get the exact code and line numbers.
+
+
+Roo wants to read this file:
+
+
+Okay, I see the code. The update button is currently rendered unconditionally in the template literal (line 263), and the event listener is attached afterwards (line 268).
+
+I will modify the renderTodoCard function to:
+
+Conditionally include the update button HTML only if currentUserPubkey matches event.pubkey.
+Conditionally attach the click listener only if the button exists in the rendered card.
+
+Roo wants to edit this file:
+
+
+Checkpoint
+Current
+
+
+
+Okay, I have modified the renderTodoCard function in index.html.
+
+Now, the "Update" button will only be rendered in the HTML if the currentUserPubkey (obtained from the Nostr browser extension) matches the pubkey of the TODO event's author. Consequently, the click listener for the update button will also only be attached when the button is present.
+
+This ensures that only the owner of a TODO will see the button to update its status.
+
+You can reload the index.html file locally to test this change. If it works as expected, remember to commit and push the updated index.html to your master branch on GitHub for the changes to reflect on your GitHub Pages site.
+
+
+Task Completed
+I have fixed the issue where the "Update" button was visible for all TODOs. The button will now only appear on cards for TODOs created by the currently logged-in user (via the Nostr browser extension). Remember to commit and push the updated index.html to GitHub to see the change on your live GitHub Pages site.

@@ -1,0 +1,1 @@
+Right now I can see the update button even for TODOs that are not mine

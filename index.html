@@ -249,6 +249,10 @@
             const authorNpub = nip19.npubEncode(event.pubkey);
             const displayName = name || shortenNpub(authorNpub);
 
+            // Conditionally add the update button HTML
+            const isOwner = currentUserPubkey && currentUserPubkey === event.pubkey;
+            const updateButtonHTML = isOwner ? `<button class="update-btn">Update</button>` : '';
+
             card.innerHTML = `
                 <div class="content">${event.content}</div>
                 <div class="meta">
@@ -257,16 +261,20 @@
                 </div>
                 <div class="actions">
                     <div class="zap-info">
-                         <button class="zap-btn" title="Zap this TODO (Feature coming soon!)">⚡ Zap</button>
+                         <button class="zap-btn" title="Zap this TODO">⚡ Zap</button>
                          <span class="zap-amount">${formatSats(zapTotal)} sats</span>
                     </div>
-                    <button class="update-btn">Update</button>
+                    ${updateButtonHTML}
                 </div>
             `;
 
             // Add event listeners for buttons within this card
-            card.querySelector('.update-btn').addEventListener('click', handleUpdateClick);
-            card.querySelector('.zap-btn').addEventListener('click', handleZapClick); // Uncommented
+            // Conditionally attach listener only if the button exists
+            const updateButton = card.querySelector('.update-btn');
+            if (updateButton) {
+                updateButton.addEventListener('click', handleUpdateClick);
+            }
+            card.querySelector('.zap-btn').addEventListener('click', handleZapClick);
 
             return card;
         }
