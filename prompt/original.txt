@@ -1,0 +1,1 @@
+A TODO list with nostr login and zaps. You allow anyone to enter their own TODOs. They're then able to share them via popular nostr relays and other users are able to zap their favorite TODO items. A leaderboard shows the most popular TODO items by global zaps. You should be able to login via a browser extension like alby.

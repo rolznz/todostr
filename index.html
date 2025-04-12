@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nostr TODO List</title>
+    <script src="https://unpkg.com/nostr-tools/lib/nostr.bundle.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        h1 {
+            margin: 0;
+        }
+        #add-todo-btn {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1em;
+        }
+        #add-todo-btn:hover {
+            background-color: #0056b3;
+        }
+        #todo-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        .todo-card {
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .todo-card .content {
+            margin-bottom: 10px;
+            word-wrap: break-word; /* Ensure long content wraps */
+        }
+        .todo-card .meta {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .todo-card .meta span {
+            display: block;
+            margin-bottom: 5px;
+        }
+        .todo-card .actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+        .todo-card .actions button {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .todo-card .actions .update-btn {
+            background-color: #ffc107;
+            color: #333;
+        }
+        .todo-card .actions .update-btn:hover {
+            background-color: #e0a800;
+        }
+         .todo-card .actions .zap-btn {
+            background-color: #9c27b0;
+            color: white;
+        }
+        .todo-card .actions .zap-btn:hover {
+            background-color: #7b1fa2;
+        }
+        .todo-card .actions .zap-info {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .todo-card .actions .zap-amount {
+            font-weight: bold;
+            color: #9c27b0;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed; /* Stay in place */
+            z-index: 1; /* Sit on top */
+            left: 0;
+            top: 0;
+            width: 100%; /* Full width */
+            height: 100%; /* Full height */
+            overflow: auto; /* Enable scroll if needed */
+            background-color: rgb(0,0,0); /* Fallback color */
+            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto; /* 15% from the top and centered */
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%; /* Could be more or less, depending on screen size */
+            max-width: 500px;
+            border-radius: 8px;
+            position: relative;
+        }
+        .close-btn {
+            color: #aaa;
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            font-size: 28px;
+            font-weight: bold;
+        }
+        .close-btn:hover,
+        .close-btn:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        #todo-text {
+            width: calc(100% - 22px); /* Account for padding/border */
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        #submit-todo-btn {
+            padding: 10px 15px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #submit-todo-btn:hover {
+            background-color: #218838;
+        }
+
+        /* Responsive */
+        @media (max-width: 600px) {
+            .container {
+                padding: 15px;
+            }
+            #todo-list {
+                grid-template-columns: 1fr; /* Stack cards on small screens */
+            }
+            .modal-content {
+                width: 90%;
+                margin: 20% auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Nostr TODOs</h1>
+            <button id="add-todo-btn">Add TODO</button>
+        </header>
+        <div id="todo-list">
+            <!-- TODO cards will be inserted here -->
+            <p>Loading TODOs...</p>
+        </div>
+    </div>
+
+    <!-- Add TODO Modal -->
+    <div id="add-todo-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>Add New TODO</h2>
+            <textarea id="todo-text" rows="4" placeholder="What needs to be done?"></textarea>
+            <button id="submit-todo-btn">Submit TODO</button>
+        </div>
+    </div>
+
+    <script>
+        const { SimplePool, finalizeEvent, nip19 } = NostrTools;
+
+        const pool = new SimplePool();
+        const relays = ['wss://relay.damus.io', 'wss://nos.lol'];
+        const todoListElement = document.getElementById('todo-list');
+        const addTodoBtn = document.getElementById('add-todo-btn');
+        const modal = document.getElementById('add-todo-modal');
+        const closeModalBtn = modal.querySelector('.close-btn');
+        const submitTodoBtn = document.getElementById('submit-todo-btn');
+        const todoTextArea = document.getElementById('todo-text');
+
+        // --- Data Store ---
+        // Store TODOs, keyed by event id
+        // value: { event: NostrEvent, name: string, status: string, zapTotal: number, subs: { profile: Sub, status: Sub, zaps: Sub } }
+        const todos = new Map();
+        let currentUserPubkey = null;
+
+        // --- Utility Functions ---
+        function shortenNpub(npub) {
+            if (!npub || npub.length < 16) return npub;
+            return `${npub.substring(0, 8)}...${npub.substring(npub.length - 8)}`;
+        }
+
+        function formatSats(msats) {
+            return Math.floor(msats / 1000);
+        }
+
+        // --- Rendering ---
+        function renderTodoCard(todoData) {
+            const { event, name, status, zapTotal } = todoData;
+            const cardId = `todo-${event.id}`;
+            let card = document.getElementById(cardId);
+
+            if (!card) {
+                card = document.createElement('div');
+                card.classList.add('todo-card');
+                card.id = cardId;
+                card.dataset.eventId = event.id; // Store event id for actions
+                card.dataset.authorPubkey = event.pubkey; // Store author pubkey for actions
+            }
+
+            const authorNpub = nip19.npubEncode(event.pubkey);
+            const displayName = name || shortenNpub(authorNpub);
+
+            card.innerHTML = `
+                <div class="content">${event.content}</div>
+                <div class="meta">
+                    <span class="author">By: ${displayName}</span>
+                    <span class="status">Status: ${status}</span>
+                </div>
+                <div class="actions">
+                    <div class="zap-info">
+                         <button class="zap-btn" title="Zap this TODO (Feature coming soon!)">⚡ Zap</button>
+                         <span class="zap-amount">${formatSats(zapTotal)} sats</span>
+                    </div>
+                    <button class="update-btn">Update</button>
+                </div>
+            `;
+
+            // Add event listeners for buttons within this card
+            card.querySelector('.update-btn').addEventListener('click', handleUpdateClick);
+            // card.querySelector('.zap-btn').addEventListener('click', handleZapClick); // Future implementation
+
+            return card;
+        }
+
+        function renderTodoList() {
+            // Clear current list (except loading message if empty)
+            const loadingMsg = todoListElement.querySelector('p');
+            if (loadingMsg && todos.size > 0) {
+                loadingMsg.remove();
+            } else if (!loadingMsg && todos.size === 0) {
+                 todoListElement.innerHTML = '<p>No TODOs found yet. Add one!</p>';
+                 return;
+            }
+
+            // Sort todos by zapTotal descending
+            const sortedTodos = Array.from(todos.values()).sort((a, b) => b.zapTotal - a.zapTotal);
+
+            // Efficiently update DOM: Create fragment, append/update nodes, replace content
+            const fragment = document.createDocumentFragment();
+            sortedTodos.forEach(todoData => {
+                fragment.appendChild(renderTodoCard(todoData));
+            });
+
+            // Replace existing content with sorted/updated cards
+            todoListElement.innerHTML = ''; // Clear previous content
+            todoListElement.appendChild(fragment);
+        }
+
+
+        // --- Nostr Logic ---
+
+        async function checkNostrExtension() {
+            if (window.nostr) {
+                try {
+                    currentUserPubkey = await window.nostr.getPublicKey();
+                    console.log(`Nostr extension found. Pubkey: ${currentUserPubkey}`);
+                    return true;
+                } catch (error) {
+                    console.error("Error getting public key from Nostr extension:", error);
+                    alert("Could not get public key from Nostr extension. Please ensure it's set up correctly.");
+                    return false;
+                }
+            } else {
+                alert("Alby extension not found. Please install the Alby Browser Extension (or another NIP-07 compatible extension) and then reload the page.");
+                // Disable buttons that require the extension
+                addTodoBtn.disabled = true;
+                submitTodoBtn.disabled = true;
+                // We might want to disable update buttons too, but they are added dynamically
+                return false;
+            }
+        }
+
+        function subscribeToProfile(pubkey, todoId) {
+            if (!todos.has(todoId) || todos.get(todoId).subs.profile) return; // Already subscribed or TODO removed
+
+            const sub = pool.subscribeMany(
+                relays,
+                [{ kinds: [0], authors: [pubkey], limit: 1 }],
+                {
+                    onevent(event) {
+                        try {
+                            const profile = JSON.parse(event.content);
+                            const name = profile.name || profile.display_name || profile.displayName;
+                            if (name && todos.has(todoId)) {
+                                todos.get(todoId).name = name;
+                                renderTodoList(); // Re-render to show name
+                            }
+                        } catch (e) {
+                            console.error(`Failed to parse profile metadata for ${pubkey}:`, e);
+                        }
+                    },
+                    oneose() {
+                        // console.log(`Profile subscription closed for ${pubkey}`);
+                        // Don't close subscription based on EOSE as profiles can update
+                    }
+                }
+            );
+            if (todos.has(todoId)) {
+                todos.get(todoId).subs.profile = sub;
+            }
+        }
+
+        function subscribeToStatus(eventId, authorPubkey, todoId) {
+             if (!todos.has(todoId) || todos.get(todoId).subs.status) return; // Already subscribed or TODO removed
+
+            let latestStatus = null;
+            let latestTimestamp = 0;
+
+            const sub = pool.subscribeMany(
+                relays,
+                [{ kinds: [714], authors: [authorPubkey], "#e": [eventId] }],
+                {
+                    onevent(event) {
+                        if (event.created_at > latestTimestamp) {
+                            latestTimestamp = event.created_at;
+                            latestStatus = event.content;
+                            if (todos.has(todoId)) {
+                                todos.get(todoId).status = latestStatus;
+                                renderTodoList(); // Re-render to show new status
+                            }
+                        }
+                    },
+                    oneose() {
+                        // console.log(`Status subscription EOSE for ${eventId}`);
+                        // Keep listening for new status updates
+                    }
+                }
+            );
+             if (todos.has(todoId)) {
+                todos.get(todoId).subs.status = sub;
+            }
+        }
+
+         function subscribeToZaps(eventId, todoId) {
+             if (!todos.has(todoId) || todos.get(todoId).subs.zaps) return; // Already subscribed or TODO removed
+
+            const sub = pool.subscribeMany(
+                relays,
+                [{ kinds: [9735], "#e": [eventId] }],
+                {
+                    onevent(event) {
+                        try {
+                            const descriptionTag = event.tags.find(tag => tag[0] === 'description');
+                            if (descriptionTag && descriptionTag[1]) {
+                                const zapRequest = JSON.parse(descriptionTag[1]);
+                                const amountTag = zapRequest.tags.find(tag => tag[0] === 'amount');
+                                if (amountTag && amountTag[1]) {
+                                    const msats = parseInt(amountTag[1], 10);
+                                    if (!isNaN(msats) && todos.has(todoId)) {
+                                        // Note: This adds amount for *every* zap receipt event.
+                                        // If relays send duplicates, this could inflate totals.
+                                        // A more robust solution might track zap receipt IDs.
+                                        // For simplicity here, we assume mostly unique receipts arrive.
+                                        // Let's reset and recalculate on each new zap for simplicity now.
+                                        // TODO: Improve zap calculation robustness if needed.
+
+                                        // Simple recalculation approach:
+                                        let currentTotal = todos.get(todoId).zapTotal || 0;
+                                        // Let's just add for now, assuming events are unique enough for demo
+                                        todos.get(todoId).zapTotal = currentTotal + msats;
+                                        renderTodoList(); // Re-render and sort
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            console.error(`Failed to parse zap receipt or request for ${eventId}:`, e);
+                        }
+                    },
+                    oneose() {
+                        // console.log(`Zap subscription EOSE for ${eventId}`);
+                        // Keep listening for new zaps
+                    }
+                }
+            );
+             if (todos.has(todoId)) {
+                todos.get(todoId).subs.zaps = sub;
+            }
+        }
+
+        function subscribeToTodos() {
+            console.log("Subscribing to TODO events (kind 713)...");
+            const sub = pool.subscribeMany(
+                relays,
+                [{ kinds: [713] }], // Add limit later if needed for performance
+                {
+                    onevent(event) {
+                        // console.log("Received TODO event:", event);
+                        if (!todos.has(event.id)) {
+                            todos.set(event.id, {
+                                event: event,
+                                name: null, // Fetched via kind 0
+                                status: "TODO", // Default, updated via kind 714
+                                zapTotal: 0, // Calculated via kind 9735
+                                subs: { profile: null, status: null, zaps: null }
+                            });
+                            // Trigger subscriptions for details
+                            subscribeToProfile(event.pubkey, event.id);
+                            subscribeToStatus(event.id, event.pubkey, event.id);
+                            subscribeToZaps(event.id, event.id);
+                            renderTodoList(); // Initial render
+                        } else {
+                            // Potentially update event if replaceable logic applied later, but kind 713 is regular
+                            // console.log("Duplicate TODO event received:", event.id);
+                        }
+                    },
+                    oneose() {
+                        console.log("Initial TODO sync complete (EOSE received). Listening for new TODOs...");
+                        if (todos.size === 0) {
+                             todoListElement.innerHTML = '<p>No TODOs found yet. Add one!</p>';
+                        }
+                    }
+                }
+            );
+            // We don't close this subscription
+        }
+
+        // --- Event Handlers ---
+        addTodoBtn.onclick = () => {
+            if (!currentUserPubkey) {
+                checkNostrExtension(); // Re-check or show alert
+                return;
+            }
+            todoTextArea.value = ''; // Clear previous input
+            modal.style.display = "block";
+        };
+
+        closeModalBtn.onclick = () => {
+            modal.style.display = "none";
+        };
+
+        window.onclick = (event) => {
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        };
+
+        submitTodoBtn.onclick = async () => {
+            const content = todoTextArea.value.trim();
+            if (!content) {
+                alert("Please enter some text for the TODO.");
+                return;
+            }
+            if (!window.nostr) {
+                alert("Nostr extension not available.");
+                return;
+            }
+
+            const eventTemplate = {
+                kind: 713,
+                created_at: Math.floor(Date.now() / 1000),
+                tags: [],
+                content: content,
+            };
+
+            try {
+                console.log("Signing event:", eventTemplate);
+                const signedEvent = await window.nostr.signEvent(eventTemplate);
+                console.log("Publishing event:", signedEvent);
+
+                const pubs = pool.publish(relays, signedEvent);
+                let publishedTo = 0;
+                pubs.on("ok", (relay) => {
+                    publishedTo++;
+                    console.log(`Event ${signedEvent.id} published to ${relay}`);
+                    // Maybe provide feedback after publishing to at least one relay
+                    if (publishedTo === 1) {
+                         alert("TODO submitted!");
+                    }
+                });
+                 pubs.on("failed", (relay, reason) => {
+                    console.error(`Failed to publish event ${signedEvent.id} to ${relay}: ${reason}`);
+                });
+
+                modal.style.display = "none";
+                // The main subscription will pick up the event and render it
+            } catch (error) {
+                console.error("Error signing or publishing TODO:", error);
+                alert(`Failed to submit TODO: ${error.message || error}`);
+            }
+        };
+
+        async function handleUpdateClick(clickEvent) {
+            const card = clickEvent.target.closest('.todo-card');
+            const eventId = card.dataset.eventId;
+            const authorPubkey = card.dataset.authorPubkey;
+
+            if (!window.nostr) {
+                alert("Nostr extension not available.");
+                return;
+            }
+            if (!currentUserPubkey) {
+                 // Attempt to get it again if null
+                 const hasExtension = await checkNostrExtension();
+                 if (!hasExtension || !currentUserPubkey) return;
+            }
+
+
+            if (currentUserPubkey !== authorPubkey) {
+                alert("You are not the owner of this TODO.");
+                return;
+            }
+
+            const newStatus = prompt("Update status (TODO, DOING, DONE):", todos.get(eventId)?.status || "TODO");
+            if (!newStatus || !["TODO", "DOING", "DONE"].includes(newStatus.toUpperCase())) {
+                alert("Invalid status. Please enter TODO, DOING, or DONE.");
+                return;
+            }
+
+            const eventTemplate = {
+                kind: 714,
+                created_at: Math.floor(Date.now() / 1000),
+                tags: [["e", eventId]],
+                content: newStatus.toUpperCase(),
+            };
+
+             try {
+                console.log("Signing status update:", eventTemplate);
+                const signedEvent = await window.nostr.signEvent(eventTemplate);
+                console.log("Publishing status update:", signedEvent);
+
+                const pubs = pool.publish(relays, signedEvent);
+                 let publishedTo = 0;
+                 pubs.on("ok", (relay) => {
+                    publishedTo++;
+                    console.log(`Status update ${signedEvent.id} published to ${relay}`);
+                     if (publishedTo === 1) {
+                         alert("Status updated!");
+                    }
+                });
+                 pubs.on("failed", (relay, reason) => {
+                    console.error(`Failed to publish status update ${signedEvent.id} to ${relay}: ${reason}`);
+                });
+
+                // The status subscription will pick up the change and re-render
+            } catch (error) {
+                console.error("Error signing or publishing status update:", error);
+                alert(`Failed to update status: ${error.message || error}`);
+            }
+        }
+
+        // --- Initialization ---
+        async function main() {
+            const hasExtension = await checkNostrExtension();
+            // Proceed even if extension check fails initially, but some features will be disabled.
+            // The check will happen again if user tries actions requiring it.
+
+            console.log("Connecting to relays:", relays);
+            // Ensure relays are connected before subscribing
+            // SimplePool connects automatically on first sub/pub, but explicit connect is clearer
+            try {
+                 await Promise.all(relays.map(url => pool.ensureRelay(url).connect()));
+                 console.log("Connected to relays.");
+            } catch (error) {
+                 console.error("Failed to connect to one or more relays:", error);
+                 // Continue anyway, pool might connect later or partially work
+            }
+
+
+            subscribeToTodos();
+        }
+
+        main();
+
+    </script>
+</body>
+</html>

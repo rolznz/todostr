@@ -1,0 +1,70 @@
+Make a Nostr TODO list app where anyone can post their own TODOs.
+
+It should be made all packaged in a single HTML file. Make sure to not save any other local files. External scripts via CDN are good.
+
+The Nostr kind for the TODO events I have chosen is 713 which is an normal event.
+
+You should use the following relays to query and save TODOs: wss://relay.damus.io, wss://nos.lol.
+
+When the page loads you should setup a subscription to the kind event 713, as this is how you will find existing TODOs to display.
+
+For each TODO you find, you should setup a subscription to the kind 9735 and e tag being the id of the note. This is how you can find the total amount of zaps.
+
+For example the filter for one TODO event with id "965d...669e" would be: { kinds: [9735], "#e": ["965d...669e"],}
+
+For each TODO you find, you should subscribe to the profile metadata the of the pubkey in the TODO to extract the name from the content field in the event. This is the name of the person who published the TODO.
+
+For example the filter for one TODO event with pubkey "363d...264e" would be: { kinds: [0], "authors": ["363d...264e"], limit: 1}
+
+For each TODO you find, you should setup a subscription to the kind 714 and e tag being the id of the note, and . This is how you can find the status updates for the TODO.
+
+For example the filter for one TODO event with id "965d...669e" and pubkey "363d...264e" would be: { kinds: [714], "#e": ["965d...669e"], authors: ["363d...264e"]}
+
+Never close the relay connection or above subscriptions.
+
+Each TODO should be a card showing the content of the TODO and the name of the person who posted it.
+
+It should also show the latest status of the TODO (if it does not exist, the default status is "TODO").
+
+On the bottom of each card it should have a button to zap and next to the button should show the sum of the amount of zaps the note has received. The should also be a button to "update" which will publish a new status update for the TODO (kind 714).
+
+When the update button is pressed, a prompt will be shown to update the status ("TODO", "DOING" or "DONE")
+
+{
+  kind: 714,
+  created_at: Math.floor(Date.now() / 1000),
+  tags: [["e", "<id of original event>"]],
+  content: "DOING",
+}
+
+The full event can then be received by calling window.nostr.signEvent and passing the above event in.
+
+If the pubkey does not match the pubkey of the original TODO, then abort and show an alert ("You are not the owner of this TODO")
+
+The event must then be published to the relays.
+
+On the top right there should be a button to add a new TODO, which will open a modal and allow you to type text. Once you press submit, it should create an event. 
+{
+  kind: 713,
+  created_at: Math.floor(Date.now() / 1000),
+  tags: [],
+  content: "<content the user typed>",
+}
+
+The full event can then be received by calling window.nostr.signEvent and passing the above event in.
+
+The event must then be published to the relays.
+
+If window.nostr does not exist in the browser, when we try to use it instead abort and show an alert: "Alby extension not found. Please install the Alby Browser Extension and then reload the page".
+
+The TODO cards should be ordered by the total sum of zaps.
+
+Make sure the app is responsive so it works on both mobile and desktop.
+
+
+Before you start, fetch the READMEs one at a time:
+
+1. Learn about Nostr basics and addressable events from https://raw.githubusercontent.com/nostr-protocol/nips/refs/heads/master/01.md
+2. Learn about window.nostr object which should be used to sign TODO events a user wants to post https://raw.githubusercontent.com/nostr-protocol/nips/refs/heads/master/07.md
+3. Learn about nostr-tools which will be used for subscribing to events and publishing them. Also see the "Using from the browser" section https://raw.githubusercontent.com/nbd-wtf/nostr-tools/refs/heads/master/README.md
+4. Learn more about Nostr zaps from https://raw.githubusercontent.com/nostr-protocol/nips/refs/heads/master/57.md
