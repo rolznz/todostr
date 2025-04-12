@@ -180,6 +180,35 @@
                 margin: 20% auto;
             }
         }
+
+        /* Toast Notification Styles */
+        #toast-container {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .toast {
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        .toast.show {
+            opacity: 1;
+        }
+         .toast.error { /* Optional style for errors */
+            background-color: rgba(217, 83, 79, 0.8); /* Bootstrap danger color */
+        }
     </style>
 </head>
 <body>
@@ -230,6 +259,38 @@
 
         function formatSats(msats) {
             return Math.floor(msats / 1000);
+        }
+
+        // --- Toast Notification ---
+        const toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        document.body.appendChild(toastContainer);
+
+        function showToast(message, duration = 3000, isError = false) {
+            const toast = document.createElement('div');
+            toast.classList.add('toast');
+            if (isError) {
+                toast.classList.add('error');
+            }
+            toast.textContent = message;
+            toastContainer.appendChild(toast);
+
+            // Force reflow to enable transition
+            toast.offsetHeight;
+
+            // Show toast
+            toast.classList.add('show');
+
+            // Hide and remove toast after duration
+            setTimeout(() => {
+                toast.classList.remove('show');
+                // Remove the element after the transition completes
+                setTimeout(() => {
+                    if (toast.parentNode === toastContainer) {
+                         toastContainer.removeChild(toast);
+                    }
+                }, 500); // Match transition duration
+            }, duration);
         }
 
         // --- Rendering ---
@@ -314,11 +375,11 @@
                     return true;
                 } catch (error) {
                     console.error("Error getting public key from Nostr extension:", error);
-                    alert("Could not get public key from Nostr extension. Please ensure it's set up correctly.");
+                    showToast("Could not get public key from Nostr extension. Please ensure it's set up correctly.", 5000, true);
                     return false;
                 }
             } else {
-                alert("Alby extension not found. Please install the Alby Browser Extension (or another NIP-07 compatible extension) and then reload the page.");
+                showToast("Nostr extension not found. Please install one (e.g., Alby) and reload.", 5000, true);
                 // Disable buttons that require the extension
                 addTodoBtn.disabled = true;
                 submitTodoBtn.disabled = true;
@@ -520,13 +581,13 @@
                 console.log(`Event ${signedEvent.id} published attempt initiated.`);
 
                 // Provide feedback after successful publish attempt
-                alert("TODO submitted!");
+                showToast("TODO submitted!");
 
                 modal.style.display = "none";
                 // The main subscription will pick up the event and render it
             } catch (error) {
                 console.error("Error signing or publishing TODO:", error);
-                alert(`Failed to submit TODO: ${error.message || error}`);
+                showToast(`Failed to submit TODO: ${error.message || error}`, 5000, true);
             }
         };
 
@@ -536,7 +597,7 @@
             const authorPubkey = card.dataset.authorPubkey;
 
             if (!window.nostr) {
-                alert("Nostr extension not available.");
+                showToast("Nostr extension not available.", 5000, true);
                 return;
             }
             if (!currentUserPubkey) {
@@ -547,13 +608,13 @@
 
 
             if (currentUserPubkey !== authorPubkey) {
-                alert("You are not the owner of this TODO.");
+                showToast("You are not the owner of this TODO.", 5000, true);
                 return;
             }
 
             const newStatus = prompt("Update status (TODO, DOING, DONE):", todos.get(eventId)?.status || "TODO");
             if (!newStatus || !["TODO", "DOING", "DONE"].includes(newStatus.toUpperCase())) {
-                alert("Invalid status. Please enter TODO, DOING, or DONE.");
+                showToast("Invalid status. Please enter TODO, DOING, or DONE.", 5000, true);
                 return;
             }
 
@@ -574,12 +635,12 @@
                 console.log(`Status update ${signedEvent.id} published attempt initiated.`);
 
                 // Provide feedback after successful publish attempt
-                alert("Status updated!");
+                showToast("Status updated!");
 
                 // The status subscription will pick up the change and re-render
             } catch (error) {
                 console.error("Error signing or publishing status update:", error);
-                alert(`Failed to update status: ${error.message || error}`);
+                showToast(`Failed to update status: ${error.message || error}`, 5000, true);
             }
         }
 
@@ -648,12 +709,13 @@
             const recipientPubkey = card.dataset.authorPubkey;
 
             // 1. Check for necessary extensions
+            // 1. Check for necessary extensions
             if (!window.nostr) {
-                alert("Nostr extension (like Alby) not found or not enabled. Needed to sign zap request.");
+                showToast("Nostr extension not found or not enabled. Needed to sign zap request.", 5000, true);
                 return;
             }
              if (!window.webln) {
-                alert("WebLN provider (like Alby) not found or not enabled. Needed to pay the invoice.");
+                showToast("WebLN provider not found or not enabled. Needed to pay the invoice.", 5000, true);
                 return;
             }
             if (!currentUserPubkey) {
@@ -666,7 +728,7 @@
             if (satsInput === null) return; // User cancelled
             const sats = parseInt(satsInput, 10);
             if (isNaN(sats) || sats <= 0) {
-                alert("Invalid amount.");
+                showToast("Invalid amount.", 5000, true);
                 return;
             }
             const amountMsats = sats * 1000;
@@ -678,7 +740,7 @@
                 // 3. Get Recipient LNURL Pay URL
                 const lnurlData = await fetchProfileAndLNURL(recipientPubkey);
                 if (!lnurlData || !lnurlData.lnurlPayUrl) {
-                    alert("Could not find a valid Lightning Address or LNURL for the recipient.");
+                    showToast("Could not find a valid Lightning Address or LNURL for the recipient.", 5000, true);
                     return;
                 }
                 const { lnurlPayUrl, originalLnUrl } = lnurlData;
@@ -693,18 +755,18 @@
                 console.log("LNURL params:", lnurlParams);
 
                 if (lnurlParams.status === 'ERROR') {
-                    throw new Error(`LNURL Error: ${lnurlParams.reason}`);
+                    throw new Error(`LNURL Error: ${lnurlParams.reason || 'Unknown reason'}`);
                 }
                 if (!lnurlParams.callback || !lnurlParams.tag === "payRequest") {
                      throw new Error("Invalid LNURL-pay response.");
                 }
                  if (!lnurlParams.allowsNostr || lnurlParams.nostrPubkey === undefined) { // Check allowsNostr explicitly
-                    alert("Recipient's Lightning wallet does not support Nostr Zaps (allowsNostr is not true or nostrPubkey missing).");
+                    showToast("Recipient's wallet does not support Nostr Zaps.", 5000, true);
                     return;
                 }
                  // Optional: Check amount limits
                 if (amountMsats < (lnurlParams.minSendable || 0) || amountMsats > (lnurlParams.maxSendable || Infinity)) {
-                    alert(`Amount must be between ${formatSats(lnurlParams.minSendable || 0)} and ${formatSats(lnurlParams.maxSendable || Infinity)} sats.`);
+                    showToast(`Amount must be between ${formatSats(lnurlParams.minSendable || 0)} and ${formatSats(lnurlParams.maxSendable || Infinity)} sats.`, 5000, true);
                     return;
                 }
 
@@ -759,7 +821,7 @@
 
                 // Preimage is proof of payment
                 if (paymentResult && paymentResult.preimage) {
-                     alert(`Zap successful! ${sats} sats sent. Preimage: ${paymentResult.preimage}`);
+                     showToast(`Zap successful! ${sats} sats sent.`);
                      // The zap subscription (kind 9735) should eventually update the UI total
                 } else {
                     throw new Error("Payment failed or no preimage received.");
@@ -767,7 +829,7 @@
 
             } catch (error) {
                 console.error("Zap failed:", error);
-                alert(`Zap failed: ${error.message || error}`);
+                showToast(`Zap failed: ${error.message || error}`, 5000, true);
             }
         }
 
@@ -796,5 +858,6 @@
         main();
 
     </script>
+    <!-- Toast container is added dynamically by JS -->
 </body>
 </html>

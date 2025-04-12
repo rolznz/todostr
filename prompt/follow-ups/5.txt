@@ -1,0 +1,3 @@
+I don't like the success alerts ("Status updated!" and "TODO submitted!")
+
+Can you use a toast instead that shows at the bottom of the screen?
