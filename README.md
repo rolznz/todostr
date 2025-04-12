@@ -1,4 +1,8 @@
-Created using VSCode + Roo Code plugin (Google Gemini 2.5 pro)
+# TODOstr
+
+Created using VSCode + Roo Code plugin (Google Gemini 2.5 pro). The initial working prototype was made in 3 prompts (initial + 2 follow-ups). I did not add or edit any of the code in index.html. The AI wrote everything.
+
+Try it now: [TODOstr](https://rolznz.github.io/todostr/)
 
 This was inspired by [Max](https://nostrudel.ninja/#/u/npub18lzls4f6h46n43revlzvg6x06z8geww7uudhncfdttdtypduqnfsagugm3)'s [note](https://nostrudel.ninja/#/n/nevent1qvzqqqqqqypzq079lp2n40t48tz8je7yc35vl5yw3juaaecm08sj6kk6kgzmcpxnqyfhwumn8ghj7ur4wfcxcetsv9njuetn9uq3zamnwvaz7tmwdaehgu3wwa5kuef0qqsz9l6hk0dwa6f9lww7qts93p4upnletesnc4t23y7ug08glyzpjdc8tgtal)
 
