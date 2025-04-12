@@ -457,3 +457,58 @@ You can reload index.html to verify the change. Remember to commit and push the 
 
 Task Completed
 I have replaced the alert() calls for success messages and errors with toast notifications that appear at the bottom of the screen. This should provide a less intrusive user experience. Remember to commit and push the updated index.html to GitHub for the changes to appear on your live site.
+
+I want to add some filters at the top.
+
+- Let me pick from either Global or Own (only the TODOs of the logged in user). The default should be Global.
+- Let me check which statuses I want to see. TODO, DOING, DONE. The default should be TODO and DOING.
+
+
+
+Okay, adding filtering options is a good way to manage the TODO list.
+
+Here's the plan:
+
+Add HTML: Insert radio buttons for "Global"/"Own" scope and checkboxes for "TODO"/"DOING"/"DONE" statuses below the header.
+Add CSS: Style the new filter controls.
+Modify JavaScript:
+Store the current filter state (scope and statuses).
+Add event listeners to the filter controls to update the state and re-render the list.
+Modify renderTodoList to filter the todos based on the current state before rendering. We'll keep the main subscription fetching all TODOs globally for simplicity and apply filtering client-side during rendering.
+Let's start by getting the HTML structure around the header and the start of the TODO list to insert the filter controls.
+
+
+Roo wants to read this file:
+
+
+Okay, I have the location where the filter controls should be added in the HTML. Now I need the CSS section again to add styles for these new controls.
+
+
+Roo wants to read this file:
+
+
+Okay, I have the HTML and CSS sections. Now I'll apply the changes to add the filter controls and their styles, and then update the JavaScript to handle the filtering logic.
+
+
+Roo wants to edit this file:
+
+
+Checkpoint
+Current
+
+
+
+Okay, I have added the filtering controls (Scope: Global/Own, Status: TODO/DOING/DONE) below the header and updated the necessary CSS and JavaScript.
+
+Here's how it works:
+
+HTML & CSS: New radio buttons and checkboxes are added below the header, styled for clarity.
+JavaScript State: Variables currentScope (default 'global') and currentStatuses (default Set containing 'TODO', 'DOING') track the selected filters.
+Event Listeners: Listeners are attached to the filter inputs. When a filter changes, the corresponding state variable is updated, and renderTodoList() is called.
+Filtering Logic: renderTodoList() now first filters the master todos list based on the currentScope and currentStatuses before sorting and rendering the matching TODO cards.
+"Own" Filter Guard: If the user tries to select "Own" but hasn't connected their Nostr extension (so currentUserPubkey is null), a toast message appears, and the filter reverts to "Global".
+You can now reload index.html to see and use the new filtering options. Remember to commit and push the updated file to GitHub if you want the changes reflected on your live site.
+
+
+Task Completed
+I have added filtering options to the Nostr TODO app. You can now filter the displayed TODOs by scope (Global or Own) and by status (TODO, DOING, DONE) using the controls below the header. The list updates automatically when you change the filters. Remember to commit and push the updated index.html to GitHub for the changes to appear on your live site.

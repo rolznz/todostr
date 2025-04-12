@@ -1,0 +1,4 @@
+I want to add some filters at the top.
+
+- Let me pick from either Global or Own (only the TODOs of the logged in user). The default should be Global.
+- Let me check which statuses I want to see. TODO, DOING, DONE. The default should be TODO and DOING.

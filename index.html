@@ -209,6 +209,35 @@
          .toast.error { /* Optional style for errors */
             background-color: rgba(217, 83, 79, 0.8); /* Bootstrap danger color */
         }
+
+        /* Filter Styles */
+        .filters {
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #eee;
+            border-radius: 5px;
+            display: flex;
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            gap: 20px; /* Spacing between filter groups */
+            align-items: center;
+        }
+        .filter-group {
+            display: flex;
+            gap: 10px; /* Spacing within a group */
+            align-items: center;
+        }
+         .filter-group label {
+            margin-right: 5px; /* Space between input and label text */
+            cursor: pointer;
+        }
+         .filter-group input[type="radio"],
+         .filter-group input[type="checkbox"] {
+             cursor: pointer;
+         }
+         .filter-group strong { /* Style the group titles */
+             font-weight: bold;
+             margin-right: 5px;
+         }
     </style>
 </head>
 <body>
@@ -217,6 +246,27 @@
             <h1>Nostr TODOs</h1>
             <button id="add-todo-btn">Add TODO</button>
         </header>
+
+        <!-- Filter Controls -->
+        <div class="filters">
+            <div class="filter-group">
+                <strong>Show:</strong>
+                <input type="radio" id="filter-global" name="scope" value="global" checked>
+                <label for="filter-global">Global</label>
+                <input type="radio" id="filter-own" name="scope" value="own">
+                <label for="filter-own">Own</label>
+            </div>
+            <div class="filter-group">
+                <strong>Status:</strong>
+                <input type="checkbox" id="filter-todo" value="TODO" checked>
+                <label for="filter-todo">TODO</label>
+                <input type="checkbox" id="filter-doing" value="DOING" checked>
+                <label for="filter-doing">Doing</label>
+                <input type="checkbox" id="filter-done" value="DONE">
+                <label for="filter-done">Done</label>
+            </div>
+        </div>
+
         <div id="todo-list">
             <!-- TODO cards will be inserted here -->
             <p>Loading TODOs...</p>
@@ -250,6 +300,8 @@
         // value: { event: NostrEvent, name: string, status: string, zapTotal: number, subs: { profile: Sub, status: Sub, zaps: Sub } }
         const todos = new Map();
         let currentUserPubkey = null;
+        let currentScope = 'global'; // 'global' or 'own'
+        let currentStatuses = new Set(['TODO', 'DOING']); // Default statuses
 
         // --- Utility Functions ---
         function shortenNpub(npub) {
@@ -341,26 +393,41 @@
         }
 
         function renderTodoList() {
-            // Clear current list (except loading message if empty)
-            const loadingMsg = todoListElement.querySelector('p');
-            if (loadingMsg && todos.size > 0) {
-                loadingMsg.remove();
-            } else if (!loadingMsg && todos.size === 0) {
-                 todoListElement.innerHTML = '<p>No TODOs found yet. Add one!</p>';
+            // 1. Filter Todos based on current state
+            const filteredTodos = Array.from(todos.values()).filter(todoData => {
+                // Scope filter
+                const scopeMatch = currentScope === 'global' || (currentScope === 'own' && currentUserPubkey && todoData.event.pubkey === currentUserPubkey);
+                if (!scopeMatch) return false;
+
+                // Status filter
+                const statusMatch = currentStatuses.has(todoData.status.toUpperCase());
+                if (!statusMatch) return false;
+
+                return true; // Passes both filters
+            });
+
+            // 2. Clear current list or show appropriate message
+            todoListElement.innerHTML = ''; // Clear previous content
+            if (filteredTodos.length === 0) {
+                 let message = "No TODOs match the current filters.";
+                 if (todos.size === 0) {
+                     message = "No TODOs found yet. Add one!";
+                 } else if (currentScope === 'own' && !currentUserPubkey) {
+                     message = "Connect your Nostr extension to see your own TODOs.";
+                 }
+                 todoListElement.innerHTML = `<p>${message}</p>`;
                  return;
             }
 
-            // Sort todos by zapTotal descending
-            const sortedTodos = Array.from(todos.values()).sort((a, b) => b.zapTotal - a.zapTotal);
 
-            // Efficiently update DOM: Create fragment, append/update nodes, replace content
+            // 3. Sort filtered todos by zapTotal descending
+            const sortedTodos = filteredTodos.sort((a, b) => b.zapTotal - a.zapTotal);
+
+            // 4. Efficiently update DOM with filtered & sorted todos
             const fragment = document.createDocumentFragment();
             sortedTodos.forEach(todoData => {
                 fragment.appendChild(renderTodoCard(todoData));
             });
-
-            // Replace existing content with sorted/updated cards
-            todoListElement.innerHTML = ''; // Clear previous content
             todoListElement.appendChild(fragment);
         }
 
@@ -853,6 +920,32 @@
 
 
             subscribeToTodos();
+
+            // Add Filter Event Listeners
+            document.querySelectorAll('input[name="scope"]').forEach(radio => {
+                radio.addEventListener('change', (event) => {
+                    currentScope = event.target.value;
+                    // Disable "Own" if pubkey not available
+                    if (currentScope === 'own' && !currentUserPubkey) {
+                        showToast("Connect Nostr extension to filter by 'Own'.", 3000, true);
+                        event.target.checked = false; // Revert selection
+                        document.getElementById('filter-global').checked = true; // Select global again
+                        currentScope = 'global';
+                    }
+                    renderTodoList();
+                });
+            });
+
+            document.querySelectorAll('.filters input[type="checkbox"]').forEach(checkbox => {
+                checkbox.addEventListener('change', (event) => {
+                    if (event.target.checked) {
+                        currentStatuses.add(event.target.value);
+                    } else {
+                        currentStatuses.delete(event.target.value);
+                    }
+                    renderTodoList();
+                });
+            });
         }
 
         main();
