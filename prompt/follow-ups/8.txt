@@ -1,0 +1,3 @@
+Disable the zap button for my own TODOs (and also make it look disabled).
+
+And when summing zaps, exclude self-zaps.

@@ -98,8 +98,14 @@
             background-color: #9c27b0;
             color: white;
         }
-        .todo-card .actions .zap-btn:hover {
+        .todo-card .actions .zap-btn:hover:not(:disabled) { /* Only hover effect if not disabled */
             background-color: #7b1fa2;
+        }
+        .todo-card .actions .zap-btn:disabled {
+            background-color: #ccc; /* Grey background */
+            color: #666; /* Darker text */
+            cursor: not-allowed; /* Indicate non-interactive */
+            opacity: 0.7; /* Slightly faded */
         }
         .todo-card .actions .zap-info {
             display: flex;
@@ -406,7 +412,7 @@
                 </div>
                 <div class="actions">
                     <div class="zap-info">
-                         <button class="zap-btn" title="Zap this TODO">⚡ Zap</button>
+                         <button class="zap-btn" title="${isOwner ? 'Cannot zap your own TODO' : 'Zap this TODO'}" ${isOwner ? 'disabled' : ''}>⚡ Zap</button>
                          <span class="zap-amount">${formatSats(zapTotal)} sats</span>
                     </div>
                     ${updateButtonHTML}
@@ -419,7 +425,10 @@
             if (updateButton) {
                 updateButton.addEventListener('click', handleUpdateClick);
             }
-            card.querySelector('.zap-btn').addEventListener('click', handleZapClick);
+            const zapButton = card.querySelector('.zap-btn');
+            if (zapButton && !zapButton.disabled) { // Only add listener if not disabled
+                zapButton.addEventListener('click', handleZapClick);
+            }
 
             return card;
         }
@@ -559,22 +568,28 @@
                         try {
                             const descriptionTag = event.tags.find(tag => tag[0] === 'description');
                             if (descriptionTag && descriptionTag[1]) {
-                                const zapRequest = JSON.parse(descriptionTag[1]);
+                                const zapRequest = JSON.parse(descriptionTag[1]); // This is the kind 9734 event
                                 const amountTag = zapRequest.tags.find(tag => tag[0] === 'amount');
-                                if (amountTag && amountTag[1]) {
-                                    const msats = parseInt(amountTag[1], 10);
-                                    if (!isNaN(msats) && todos.has(todoId)) {
-                                        // Note: This adds amount for *every* zap receipt event.
-                                        // If relays send duplicates, this could inflate totals.
-                                        // A more robust solution might track zap receipt IDs.
-                                        // For simplicity here, we assume mostly unique receipts arrive.
-                                        // Let's reset and recalculate on each new zap for simplicity now.
-                                        // TODO: Improve zap calculation robustness if needed.
+                                const todoData = todos.get(todoId); // Get the TODO data
 
-                                        // Simple recalculation approach:
-                                        let currentTotal = todos.get(todoId).zapTotal || 0;
-                                        // Let's just add for now, assuming events are unique enough for demo
-                                        todos.get(todoId).zapTotal = currentTotal + msats;
+                                if (amountTag && amountTag[1] && todoData) {
+                                    const msats = parseInt(amountTag[1], 10);
+                                    const zapperPubkey = zapRequest.pubkey; // Pubkey of the person who sent the zap
+                                    const todoAuthorPubkey = todoData.event.pubkey; // Pubkey of the person who created the TODO
+
+                                    // Check if the zapper is the author of the TODO (self-zap)
+                                    if (zapperPubkey === todoAuthorPubkey) {
+                                        console.log(`Ignoring self-zap from ${zapperPubkey} for TODO ${eventId}`);
+                                        return; // Don't add self-zaps to the total
+                                    }
+
+                                    if (!isNaN(msats)) {
+                                        // Note: This still adds amount for *every* zap receipt event from others.
+                                        // Duplicates from relays could still inflate totals slightly.
+                                        // TODO: Improve zap calculation robustness if needed (e.g., track receipt IDs).
+
+                                        let currentTotal = todoData.zapTotal || 0;
+                                        todoData.zapTotal = currentTotal + msats;
                                         renderTodoList(); // Re-render and sort
                                     }
                                 }
@@ -852,6 +867,12 @@
             const card = clickEvent.target.closest('.todo-card');
             const eventId = card.dataset.eventId;
             const recipientPubkey = card.dataset.authorPubkey;
+
+            // Prevent zapping own TODO
+            if (currentUserPubkey && currentUserPubkey === recipientPubkey) {
+                showToast("You cannot zap your own TODO.", 3000, true);
+                return;
+            }
 
             // 1. Check for necessary extensions
             // 1. Check for necessary extensions

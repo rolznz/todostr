@@ -239,3 +239,164 @@ The changes have been applied to index.html. The prompt for updating the TODO st
 
 Task Completed
 I have replaced the update prompt with a modal dialog in index.html. The new modal allows selecting the TODO status using radio buttons with emojis.
+
+Disable the zap button for my own TODOs (and also make it look disabled).
+
+And when summing zaps, exclude self-zaps.
+
+
+
+Okay, I understand the feedback. I need to:
+
+Disable the zap button visually and functionally for TODOs created by the current user.
+Modify the zap calculation logic to ignore zaps sent by the TODO's author.
+First, I'll re-read index.html to ensure I have the latest version after the previous changes.
+
+Okay, I've got the updated code. Now I'll implement the requested changes: disabling the zap button for the user's own TODOs and excluding self-zaps from the total count.
+
+Here's the diff:
+
+<<<<<<< SEARCH
+:start_line:102
+:end_line:103
+-------
+         .todo-card .actions .zap-btn:hover {
+             background-color: #7b1fa2;
+         }
+=======
+         .todo-card .actions .zap-btn:hover:not(:disabled) { /* Only hover effect if not disabled */
+             background-color: #7b1fa2;
+         }
+         .todo-card .actions .zap-btn:disabled {
+             background-color: #ccc; /* Grey background */
+             color: #666; /* Darker text */
+             cursor: not-allowed; /* Indicate non-interactive */
+             opacity: 0.7; /* Slightly faded */
+         }
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+:start_line:407
+:end_line:413
+-------
+                 <div class="actions">
+                     <div class="zap-info">
+                          <button class="zap-btn" title="Zap this TODO">⚡ Zap</button>
+                          <span class="zap-amount">${formatSats(zapTotal)} sats</span>
+                     </div>
+                     ${updateButtonHTML}
+                 </div>
+=======
+                 <div class="actions">
+                     <div class="zap-info">
+                          <button class="zap-btn" title="${isOwner ? 'Cannot zap your own TODO' : 'Zap this TODO'}" ${isOwner ? 'disabled' : ''}>⚡ Zap</button>
+                          <span class="zap-amount">${formatSats(zapTotal)} sats</span>
+                     </div>
+                     ${updateButtonHTML}
+                 </div>
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+:start_line:422
+:end_line:422
+-------
+             }
+             card.querySelector('.zap-btn').addEventListener('click', handleZapClick);
+
+             return card;
+=======
+             }
+             const zapButton = card.querySelector('.zap-btn');
+             if (zapButton && !zapButton.disabled) { // Only add listener if not disabled
+                 zapButton.addEventListener('click', handleZapClick);
+             }
+
+             return card;
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+:start_line:563
+:end_line:579
+-------
+                                 const zapRequest = JSON.parse(descriptionTag[1]);
+                                 const amountTag = zapRequest.tags.find(tag => tag[0] === 'amount');
+                                 if (amountTag && amountTag[1]) {
+                                     const msats = parseInt(amountTag[1], 10);
+                                     if (!isNaN(msats) && todos.has(todoId)) {
+                                         // Note: This adds amount for *every* zap receipt event.
+                                         // If relays send duplicates, this could inflate totals.
+                                         // A more robust solution might track zap receipt IDs.
+                                         // For simplicity here, we assume mostly unique receipts arrive.
+                                         // Let's reset and recalculate on each new zap for simplicity now.
+                                         // TODO: Improve zap calculation robustness if needed.
+
+                                         // Simple recalculation approach:
+                                         let currentTotal = todos.get(todoId).zapTotal || 0;
+                                         // Let's just add for now, assuming events are unique enough for demo
+                                         todos.get(todoId).zapTotal = currentTotal + msats;
+                                         renderTodoList(); // Re-render and sort
+                                     }
+=======
+                                 const zapRequest = JSON.parse(descriptionTag[1]); // This is the kind 9734 event
+                                 const amountTag = zapRequest.tags.find(tag => tag[0] === 'amount');
+                                 const todoData = todos.get(todoId); // Get the TODO data
+
+                                 if (amountTag && amountTag[1] && todoData) {
+                                     const msats = parseInt(amountTag[1], 10);
+                                     const zapperPubkey = zapRequest.pubkey; // Pubkey of the person who sent the zap
+                                     const todoAuthorPubkey = todoData.event.pubkey; // Pubkey of the person who created the TODO
+
+                                     // Check if the zapper is the author of the TODO (self-zap)
+                                     if (zapperPubkey === todoAuthorPubkey) {
+                                         console.log(`Ignoring self-zap from ${zapperPubkey} for TODO ${eventId}`);
+                                         return; // Don't add self-zaps to the total
+                                     }
+
+                                     if (!isNaN(msats)) {
+                                         // Note: This still adds amount for *every* zap receipt event from others.
+                                         // Duplicates from relays could still inflate totals slightly.
+                                         // TODO: Improve zap calculation robustness if needed (e.g., track receipt IDs).
+
+                                         let currentTotal = todoData.zapTotal || 0;
+                                         todoData.zapTotal = currentTotal + msats;
+                                         renderTodoList(); // Re-render and sort
+                                     }
+>>>>>>> REPLACE
+<<<<<<< SEARCH
+:start_line:854
+:end_line:854
+-------
+             const eventId = card.dataset.eventId;
+             const recipientPubkey = card.dataset.authorPubkey;
+
+             // 1. Check for necessary extensions
+=======
+             const eventId = card.dataset.eventId;
+             const recipientPubkey = card.dataset.authorPubkey;
+
+             // Prevent zapping own TODO
+             if (currentUserPubkey && currentUserPubkey === recipientPubkey) {
+                 showToast("You cannot zap your own TODO.", 3000, true);
+                 return;
+             }
+
+             // 1. Check for necessary extensions
+>>>>>>> REPLACE
+
+Roo wants to edit this file:
+
+
+Checkpoint
+Current
+
+
+
+Okay, the changes have been applied.
+
+The zap button is now visually disabled (greyed out, non-clickable cursor) on TODO cards created by the currently logged-in user.
+The handleZapClick function now checks if the zapper is the same as the TODO author before proceeding.
+The subscribeToZaps function now checks the pubkey of the zap request (kind 9734) embedded in the zap receipt (kind 9735) against the TODO author's pubkey and ignores the zap amount if they match (self-zap).
+
+Task Completed
+I have updated index.html to:
+
+Replace the update prompt with a modal dialog featuring status radio buttons (📝 TODO, ⏳ DOING, ✅ DONE).
+Disable the zap button visually and functionally for the user's own TODOs.
+Exclude zaps sent by the TODO's author (self-zaps) from the displayed zap total.
